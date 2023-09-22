@@ -17,7 +17,7 @@ using Magics::FileOf;
  * As of writing this (26/7/23 03:09) the only things that I think would differe between the directions in terms of how
  * we precompute the moves would be how the moves are recorded(target indexes vairing) 
 */
-static std::array<std::array<std::array<move_info,2187>,4>,64> PrecomputeTitboards()
+static consteval std::array<std::array<std::array<move_info,2187>,4>,64> PrecomputeTitboards()
 {
     std::array<std::array<std::array<move_info,2187>,4>,64> result{};
     for(uint8_t sq = 0; sq < 64; ++sq)
@@ -26,140 +26,101 @@ static std::array<std::array<std::array<move_info,2187>,4>,64> PrecomputeTitboar
         {
             for(uint16_t them = 0; them < 256;++them)
             {
-                //skiping useless blocker configs
-                // not us and fileofsq || 
-                if(us & them || (((~us) & Magics::BBFileOf(sq) || them & Magics::BBFileOf(sq)) & ((~us) & Magics::BBRankOf(sq) || them & Magics::BBRankOf(sq)))) continue;
-
-                move_info file_attack_moves{};
-                move_info rank_attack_moves{};
-                move_info diagonal_attack_moves{};
-                move_info anti_diagonal_attack_moves{};
-
-                const uint8_t rank_combined = (us | them) & ~Magics::BBFileOf(sq);
-                uint8_t other_combined = (us | them) & ~Magics::BBRankOf(sq); 
-
-                uint64_t diag_attacks = 0ull;
-                uint64_t anti_diag_attacks = 0ull;
+                //if our piece is on a piece occupied by an opponents piece, it's an illegal position so we can skip this iteration
+                if(us & them) continue;
                 
-                for(int8_t current_file = FileOf(sq) + 1; current_file < 8; ++current_file)
+                const uint8_t fileofsq = Magics::FileOf(sq);
+                const uint8_t rankofsq = Magics::RankOf(sq);
+                //Checks to see if in our piece configuration, there is a piece on the square that we're trying to calc
+                //the rank attacks moves for        
+                if((us & Magics::BBFileOf(sq)))
                 {
-                    if(!((rank_combined >> current_file) & 1)) //empty
+                    const uint16_t combined = us | them;
+                    move_info rank_attacks{};
+                    for(int8_t i = fileofsq + 1; i < 8;++i )
                     {
-                        rank_attack_moves.add_move(Moves::EncodeMove(sq, sq + (current_file - FileOf(sq)), Moves::ROOK, 1));
-                        continue;
+                        if((us >> i)&1) break; // if we're trying to attack our pieces
+                        
+                        if(!((combined >> i)&1))//if we're trying to attack empty sq
+                        {
+                            rank_attacks.add_move(Moves::EncodeMove(sq,sq+(i - fileofsq),Moves::ROOK,true));
+                        }
+
+                        if((them >> i)&1) // if we're trying to attack an enemy piece
+                        {
+                            rank_attacks.add_move(Moves::EncodeMove(sq,sq+(i - fileofsq),Moves::ROOK,true));
+                            break;
+                        }
                     }
-                    if((us >> current_file) & 1) break; //our piece
-                    if((them >> current_file) & 1) //their piece
+                    for(int8_t i = fileofsq - 1; i > 0;--i )
                     {
-                        rank_attack_moves.add_move(Moves::EncodeMove(sq, sq + (current_file - FileOf(sq)), Moves::ROOK, 1));
-                        break;
+                        if((us >> i)&1) break; // if we're trying to attack our pieces
+                        
+                        if(!((combined >> i)&1))//if we're trying to attack empty sq
+                        {
+                            rank_attacks.add_move(Moves::EncodeMove(sq,sq + (fileofsq - i), Moves::ROOK, true));
+                        }
+
+                        if((them >> i)&1) // if we're trying to attack an enemy piece
+                        {
+                            rank_attacks.add_move(Moves::EncodeMove(sq, sq + (fileofsq - i), Moves::ROOK, true));
+                            break;
+                        }
                     }
+                    const uint16_t p1 = Magics::base_2_to_3[fileofsq][us & ~Magics::BBFileOf(sq)];
+                    const uint16_t p2 = Magics::base_2_to_3[fileofsq][them];
+                    result.at(sq).at((uint8_t)D::RANK).at(p1 + p2) = rank_attacks;
                 }
-                for(int8_t current_file = FileOf(sq) - 1; current_file > - 1 ; --current_file)
+                if((us & Magics::BBRankOf(sq)))
                 {
-                    if(!((rank_combined >> current_file) & 1)) 
+                    const uint16_t combined = us | them;
+                    move_info file_attacks{};
+                    move_info diag_attacks{};
+                    move_info adiag_attacks{};
+                    for(int8_t i = rankofsq + 1; i < 8;++i )
                     {
-                        rank_attack_moves.add_move(Moves::EncodeMove(sq, sq - (FileOf(sq) - current_file), Moves::ROOK, 1));
-                        continue;
+                        if((us >> i)&1) break; // if we're trying to attack our pieces
+                        
+                        if(!((combined >> i)&1))//if we're trying to attack empty sq
+                        {
+                            file_attacks.add_move(Moves::EncodeMove(sq, sq + 8 * (i - rankofsq), Moves::ROOK, true));
+                            diag_attacks.add_move(Moves::EncodeMove(sq, sq + 9 * (i - rankofsq), Moves::BISHOP, true));
+                            adiag_attacks.add_move(Moves::EncodeMove(sq, sq - 7 * (i - rankofsq), Moves::BISHOP, true));
+                        }
+
+                        if((them >> i)&1) // if we're trying to attack an enemy piece
+                        {
+                            file_attacks.add_move(Moves::EncodeMove(sq, sq + 9 * (i - rankofsq), Moves::ROOK, true));
+                            diag_attacks.add_move(Moves::EncodeMove(sq, sq + 9 * (i - rankofsq), Moves::BISHOP, true));
+                            adiag_attacks.add_move(Moves::EncodeMove(sq, sq - 7 * (i - rankofsq), Moves::BISHOP, true));
+                            break;
+                        }
                     }
-                    if((us >> current_file) & 1) break;
-                    if((them >> current_file) & 1)
+                    for(int8_t i = rankofsq - 1; i > 0;--i )
                     {
-                        rank_attack_moves.add_move(Moves::EncodeMove(sq, sq - (FileOf(sq) - current_file), Moves::ROOK, 1));
-                        break;
+                        if((us >> i)&1) break; // if we're trying to attack our pieces
+                        
+                        if(!((combined >> i)&1))//if we're trying to attack empty sq
+                        {
+                            file_attacks.add_move(Moves::EncodeMove(sq, sq - 8 * (rankofsq - i), Moves::ROOK, true));
+                            diag_attacks.add_move(Moves::EncodeMove(sq, sq - 9 * (rankofsq - i), Moves::BISHOP, true));
+                            adiag_attacks.add_move(Moves::EncodeMove(sq, sq + 7 * (rankofsq - i), Moves::BISHOP, true));
+                        }
+
+                        if((them >> i)&1) // if we're trying to attack an enemy piece
+                        {
+                            file_attacks.add_move(Moves::EncodeMove(sq, sq - 8 * (rankofsq - i), Moves::ROOK, true));
+                            diag_attacks.add_move(Moves::EncodeMove(sq, sq - 9 * (rankofsq - i), Moves::BISHOP, true));
+                            adiag_attacks.add_move(Moves::EncodeMove(sq, sq + 7 * (rankofsq - i), Moves::BISHOP, true));
+                            break;
+                        }
                     }
+                    const uint16_t p1 = Magics::base_2_to_3[rankofsq][us & ~Magics::BBRankOf(sq)];
+                    const uint16_t p2 = 2 * Magics::base_2_to_3[rankofsq][them];
+                    result.at(sq).at((uint8_t)D::FILE).at(p1 + p2) = file_attacks;
+                    result.at(sq).at((uint8_t)D::DIAG).at(p1 + p2) = diag_attacks;
+                    result.at(sq).at((uint8_t)D::ADIAG).at(p1 + p2) = adiag_attacks;
                 }
-                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                for(int8_t current_file = Magics::RankOf(sq) + 1; current_file < 8; ++current_file)
-                {
-                    if(!((other_combined >> current_file) & 1)) //empty
-                    {
-                        file_attack_moves.add_move(Moves::EncodeMove(sq, sq + 8 * (current_file - Magics::RankOf(sq)), Moves::ROOK, 1));
-
-                        diag_attacks |= Magics::IndexToBB(sq + 9 * (current_file - Magics::RankOf(sq)));
-
-                        anti_diag_attacks |=  Magics::IndexToBB(sq -  7 * (current_file - Magics::RankOf(sq)));
-                        continue;
-                    }
-                    if((us >> current_file) & 1) break; //our piece
-                    if((them >> current_file) & 1) //their piece
-                    {
-                        file_attack_moves.add_move(Moves::EncodeMove(sq, sq + 8 * (current_file - Magics::RankOf(sq)), Moves::ROOK, 1));
-
-                        diag_attacks |= Magics::IndexToBB(sq + 9 * (current_file - Magics::RankOf(sq)));
-                            
-                        anti_diag_attacks |=  Magics::IndexToBB(sq -  7 * (current_file - Magics::RankOf(sq)));
-                        break;
-                    }
-
-                }
-                for(int8_t current_file = Magics::RankOf(sq) - 1; current_file > - 1 ; --current_file)
-                {
-                    if(!((other_combined >> current_file) & 1)) 
-                    {
-                        file_attack_moves.add_move(Moves::EncodeMove(sq, sq - 8 * (Magics::RankOf(sq) - current_file), Moves::ROOK, 1));
-
-                        diag_attacks |= Magics::IndexToBB(sq - 9 * (Magics::RankOf(sq) - current_file));
-
-                        anti_diag_attacks |=  Magics::IndexToBB(sq +  7 * (Magics::RankOf(sq) - current_file));
-
-                        continue;
-                    }
-                    if((us >> current_file) & 1) break;
-                    if((them >> current_file) & 1)
-                    {
-                        file_attack_moves.add_move(Moves::EncodeMove(sq, sq - 8 * (Magics::RankOf(sq) - current_file), Moves::ROOK, 1));
-
-                        diag_attacks |= Magics::IndexToBB(sq - 9 * (Magics::RankOf(sq) - current_file));
-
-                        anti_diag_attacks |=  Magics::IndexToBB(sq +  7 * (Magics::RankOf(sq) - current_file));
-                        break;
-                    }
-                }
-                
-
-                uint16_t p1 = Magics::base_2_to_3[FileOf(sq)][us & ~Magics::BBFileOf(sq)];
-                uint16_t p2 = 2 * Magics::base_2_to_3[FileOf(sq)][them];
-                uint16_t index = p1 + p2;
-
-                result.at(sq).at(0).at(index) = file_attack_moves;
-                result.at(sq).at(1).at(index) = rank_attack_moves;
-
-                
-                //needing to do this since in some positons across diagonals, bishops have less than 8 moves meaning the full blocker config cannot be used to index
-
-                diag_attacks &= Magics::SLIDING_ATTACKS_MASK[sq][(int)D::DIAG];
-                anti_diag_attacks &= Magics::SLIDING_ATTACKS_MASK[sq][(int)D::ADIAG];
-                while(diag_attacks)
-                {
-                    diagonal_attack_moves.add_move(Moves::EncodeMove(sq,Magics::FindMS1B(diag_attacks),Moves::BISHOP,1));
-                    diag_attacks = Magics::PopMS1B(diag_attacks);
-                }
-                while(anti_diag_attacks)
-                {
-                    anti_diagonal_attack_moves.add_move(Moves::EncodeMove(sq,Magics::FindMS1B(anti_diag_attacks),Moves::BISHOP,1));
-                    anti_diag_attacks = Magics::PopMS1B(anti_diag_attacks);
-                }
-
-                uint16_t cpy_us = us;
-                uint16_t cpy_them = them;
-                other_combined |= Magics::BBRankOf(sq);
-                while(!(other_combined & 1))
-                {
-                    cpy_us >>= 1;
-                    cpy_them >>= 1;
-                    other_combined >>= 1;
-                }
-                
-                cpy_us &= ~Magics::BBFileOf(sq);
-                p1 = Magics::base_2_to_3[Magics::RankOf(sq)][cpy_us & ~Magics::BBRankOf(sq)];
-                p2 = 2 * Magics::base_2_to_3[Magics::RankOf(sq)][cpy_them];
-                index = p1 + p2;
-
-                result.at(sq).at(2).at(index) = diagonal_attack_moves;
-                result.at(sq).at(3).at(index) = anti_diagonal_attack_moves;
             }
         }
     }
@@ -176,7 +137,7 @@ public:
     template<D direction>
     static constexpr move_info& GetMovesForSliding(uint8_t piece_sq, BitBoard us, BitBoard them) noexcept
     {
-        return SLIDING_ATTACK_CONFIG[piece_sq][static_cast<int>(direction)]
+        return const_cast<move_info&>(SLIDING_ATTACK_CONFIG[piece_sq][static_cast<int>(direction)]
                 [
                     //us
                     (Magics::base_2_to_3
@@ -191,7 +152,7 @@ public:
                     : Magics::RankOf(piece_sq)]
                     [(direction == D::RANK) ? Magics::CollapsedFilesIndex(them & Magics::SLIDING_ATTACKS_MASK[piece_sq][static_cast<int>(direction)])
                     : Magics::CollapsedRanksIndex(them & Magics::SLIDING_ATTACKS_MASK[piece_sq][static_cast<int>(direction)])])
-                ];
+                ]);
     }
 private:
 
@@ -313,7 +274,7 @@ private:
     void BlackKingMoves(Move** move_list, BitBoard king) noexcept;
     
 public:    
-    inline static std::array<std::array<std::array<move_info,2187>,4>,64> SLIDING_ATTACK_CONFIG = PrecomputeTitboards();
+    constexpr static std::array<std::array<std::array<move_info,2187>,4>,64> SLIDING_ATTACK_CONFIG = PrecomputeTitboards();
     inline static BitBoard EnPassantTargetSquare;
 private:
     BitBoard white_pieces_;
