@@ -49,6 +49,7 @@ static consteval std::array<std::array<std::array<move_info,2187>,4>,64> Precomp
                         if((them >> i)&1) // if we're trying to attack an enemy piece
                         {
                             rank_attacks.add_move(Moves::EncodeMove(sq,sq+(i - fileofsq),Moves::ROOK,true));
+
                             break;
                         }
                     }
@@ -64,6 +65,7 @@ static consteval std::array<std::array<std::array<move_info,2187>,4>,64> Precomp
                         if((them >> i)&1) // if we're trying to attack an enemy piece
                         {
                             rank_attacks.add_move(Moves::EncodeMove(sq, sq + (fileofsq - i), Moves::ROOK, true));
+
                             break;
                         }
                     }
@@ -75,6 +77,10 @@ static consteval std::array<std::array<std::array<move_info,2187>,4>,64> Precomp
                 {
                     const uint16_t combined = us | them;
                     move_info file_attacks{};
+
+                    BitBoard diag_atks{};
+                    BitBoard adiag_atks{};
+                    
                     move_info diag_attacks{};
                     move_info adiag_attacks{};
                     for(int8_t i = rankofsq + 1; i < 8;++i )
@@ -84,15 +90,24 @@ static consteval std::array<std::array<std::array<move_info,2187>,4>,64> Precomp
                         if(!((combined >> i)&1))//if we're trying to attack empty sq
                         {
                             file_attacks.add_move(Moves::EncodeMove(sq, sq + 8 * (i - rankofsq), Moves::ROOK, true));
-                            diag_attacks.add_move(Moves::EncodeMove(sq, sq + 9 * (i - rankofsq), Moves::BISHOP, true));
-                            adiag_attacks.add_move(Moves::EncodeMove(sq, sq - 7 * (i - rankofsq), Moves::BISHOP, true));
+                            
+                            if(Magics::IndexInBounds(sq + 9 * (i - rankofsq)))
+                                diag_atks |= Magics::IndexToBB(sq + 9 * (i - rankofsq));
+
+                            if(Magics::IndexInBounds(sq - 7 * (i - rankofsq)))
+                                adiag_atks |= Magics::IndexToBB(sq - 7 * (i - rankofsq));
                         }
 
                         if((them >> i)&1) // if we're trying to attack an enemy piece
                         {
                             file_attacks.add_move(Moves::EncodeMove(sq, sq + 9 * (i - rankofsq), Moves::ROOK, true));
-                            diag_attacks.add_move(Moves::EncodeMove(sq, sq + 9 * (i - rankofsq), Moves::BISHOP, true));
-                            adiag_attacks.add_move(Moves::EncodeMove(sq, sq - 7 * (i - rankofsq), Moves::BISHOP, true));
+                            
+                            if(Magics::IndexInBounds(sq + 9 * (i - rankofsq)))
+                                diag_atks |= Magics::IndexToBB(sq + 9 * (i - rankofsq));
+
+                            if(Magics::IndexInBounds(sq - 7 * (i - rankofsq)))
+                                adiag_atks |= Magics::IndexToBB(sq - 7 * (i - rankofsq));
+
                             break;
                         }
                     }
@@ -103,18 +118,42 @@ static consteval std::array<std::array<std::array<move_info,2187>,4>,64> Precomp
                         if(!((combined >> i)&1))//if we're trying to attack empty sq
                         {
                             file_attacks.add_move(Moves::EncodeMove(sq, sq - 8 * (rankofsq - i), Moves::ROOK, true));
-                            diag_attacks.add_move(Moves::EncodeMove(sq, sq - 9 * (rankofsq - i), Moves::BISHOP, true));
-                            adiag_attacks.add_move(Moves::EncodeMove(sq, sq + 7 * (rankofsq - i), Moves::BISHOP, true));
+                            
+                            if(Magics::IndexInBounds(sq - 9 * (rankofsq - i)))
+                                diag_atks |= Magics::IndexToBB(sq - 9 * (rankofsq - i));
+                            
+                            if(Magics::IndexInBounds(sq + 7 * (rankofsq - i)))
+                                adiag_atks |= Magics::IndexToBB(sq + 7 * (rankofsq - i));
                         }
 
                         if((them >> i)&1) // if we're trying to attack an enemy piece
                         {
                             file_attacks.add_move(Moves::EncodeMove(sq, sq - 8 * (rankofsq - i), Moves::ROOK, true));
-                            diag_attacks.add_move(Moves::EncodeMove(sq, sq - 9 * (rankofsq - i), Moves::BISHOP, true));
-                            adiag_attacks.add_move(Moves::EncodeMove(sq, sq + 7 * (rankofsq - i), Moves::BISHOP, true));
+
+                            if(Magics::IndexInBounds(sq - 9 * (rankofsq - i)))
+                                diag_atks |= Magics::IndexToBB(sq - 9 * (rankofsq - i));
+                            
+                            if(Magics::IndexInBounds(sq + 7 * (rankofsq - i)))
+                                adiag_atks |= Magics::IndexToBB(sq + 7 * (rankofsq - i));
+
                             break;
                         }
                     }
+
+                    diag_atks &= Magics::SLIDING_ATTACKS_MASK[sq][(uint8_t)D::DIAG];
+                    adiag_atks &= Magics::SLIDING_ATTACKS_MASK[sq][(uint8_t)D::ADIAG];
+
+                    while (diag_atks)
+                    {
+                       diag_attacks.add_move(Moves::EncodeMove(sq, Magics::FindLS1B(diag_atks),Moves::BISHOP,true));
+                       diag_atks = Magics::PopLS1B(diag_atks);
+                    }
+                    while (adiag_atks)
+                    {
+                       adiag_attacks.add_move(Moves::EncodeMove(sq, Magics::FindLS1B(adiag_atks),Moves::BISHOP,true));
+                       adiag_atks = Magics::PopLS1B(adiag_atks);
+                    }
+
                     const uint16_t p1 = Magics::base_2_to_3[rankofsq][us & ~Magics::BBRankOf(sq)];
                     const uint16_t p2 = 2 * Magics::base_2_to_3[rankofsq][them];
                     result.at(sq).at((uint8_t)D::FILE).at(p1 + p2) = file_attacks;
