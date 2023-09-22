@@ -87,10 +87,10 @@ constexpr void RunTitBoardTest(uint8_t sq,std::string_view fen, move_info& info)
     // Debug::PrintBB(pos.GetPieces<false>());
     // std::cout << "Combined BB:\n";
     // Debug::PrintBB(pos.GetPieces<true>() | pos.GetPieces<false>());
-    std::cout << "Current Position:\n";
-    (us_is_white) ? Debug::PrintUsThem(pos.GetPieces<true>(),pos.GetPieces<false>()) : Debug::PrintUsThem(pos.GetPieces<false>(),pos.GetPieces<true>());
 
     info = MoveGen::SLIDING_ATTACK_CONFIG.at(sq).at(static_cast<uint8_t>(direction)).at(p1+p2);
+    std::cout << "Current Position:\n";
+    (us_is_white) ? Debug::PrintUsThemAndAttks(info, pos.GetPieces<true>(),pos.GetPieces<false>()) : Debug::PrintUsThemAndAttks(info, pos.GetPieces<false>(),pos.GetPieces<true>());
 }
 
 

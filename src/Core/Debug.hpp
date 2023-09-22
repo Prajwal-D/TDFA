@@ -161,6 +161,39 @@ namespace Debug
             output += mirrored ? "A  B  C  D  E  F  G  H" : "H  G  F  E  D  C  B  A";
             std::cout << output << std::endl;
     }
+     void PrintUsThemAndAttks(move_info info, BitBoard us, BitBoard them, bool mirrored=false)
+    {
+        std::string output{},current_line{};
+        for(int row{0}; row < 8; ++row)
+        {
+            for(int col{0}; col < 8;++col)
+            {
+                const int current_index = (col + row*8);
+                if(move_info::contains_end_index(info,current_index))
+                {
+                    current_line = mirrored ?   current_line + "XX " : "XX " + current_line;
+                }
+                else if(((us >> current_index))&1ull)
+                {
+                    current_line = mirrored ?   current_line + "UU " : "UU " + current_line;
+                }
+                else if (((them >> current_index))&1ull)
+                {
+                    current_line = mirrored ?   current_line + "TT " : "TT " + current_line;
+                }
+                else
+                {
+                    current_line = mirrored ?   current_line + ((current_index < 10) ? ("0" + std::to_string(current_index) + " ") : (std::to_string(current_index) + " ")) : ((current_index < 10) ? ("0" + std::to_string(current_index) + " ") : (std::to_string(current_index) + " ")) + current_line;
+                }
+            }
+            current_line += "|" + std::to_string(row + 1) + " \n";
+            output = current_line + output;
+            current_line = "";
+        }                    
+        output += "------------------------\n";
+        output += mirrored ? "A  B  C  D  E  F  G  H" : "H  G  F  E  D  C  B  A";
+        std::cout << output << std::endl;
+    }
     void PrintEncodedMoveBin(Move move)
     {
         std::cout << std::bitset<16>(move) << std::endl;

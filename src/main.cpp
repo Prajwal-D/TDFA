@@ -46,31 +46,22 @@ int main(void)
     //////// This is for testing some specfic test cases with the titboard move generator
     move_info info;
     RunTitBoardTest<D::DIAG>(12,"8/8/8/8/8/8/4B3/8 w - - 0 1",info);
-    PRINT_TIT_TEST_RESULTS;
 
     RunTitBoardTest<D::ADIAG>(12,"8/8/8/8/8/8/4B3/8 w - - 0 1",info);
-    PRINT_TIT_TEST_RESULTS;
-    
+
     RunTitBoardTest<D::DIAG>(36,"8/6n1/8/4B3/8/8/8/R7 w - - 0 1",info);
-    PRINT_TIT_TEST_RESULTS;
 
     RunTitBoardTest<D::ADIAG>(36,"8/6n1/8/4B3/8/8/8/R7 w - - 0 1",info);
-    PRINT_TIT_TEST_RESULTS;
 
     RunTitBoardTest<D::FILE>(6,"8/8/8/8/8/8/8/6R1 w - - 0 1",info);
-    PRINT_TIT_TEST_RESULTS;
 
-    RunTitBoardTest<D::RANK>(2,"8/8/8/8/8/8/8/P1R2P1n w - - 0 1",info);
-    PRINT_TIT_TEST_RESULTS;
-
+    // RunTitBoardTest<D::RANK>(2,"8/8/8/8/8/8/8/P1R2P1n w - - 0 1",info);
+    
     RunTitBoardTest<D::FILE>(29,"8/8/8/8/5R2/8/8/8 w - - 0 1",info);
-    PRINT_TIT_TEST_RESULTS;
 
     RunTitBoardTest<D::FILE>(29,"8/8/8/5p2/5R2/8/5P2/8 w - - 0 1",info);
-    PRINT_TIT_TEST_RESULTS;
 
     RunTitBoardTest<D::DIAG>(24, "8/8/8/8/B7/8/8/8 w - - 0 1",info);
-    PRINT_TIT_TEST_RESULTS;
     
     BB::Position pos("8/8/8/5p2/5R2/8/5P2/8 w - - 0 1");
     Debug::PrintBB(pos.GetPieces<true>() | pos.GetPieces<false>());

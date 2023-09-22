@@ -28,6 +28,16 @@ struct move_info
 {
     constexpr move_info():encoded_move(),count(0){}
     constexpr void add_move(Move m){encoded_move.at(count) = m;++count;}
+    // helper function for a debug function. checks if a specified end index is contained within 
+    // the encoded moves stored in a move_info instance
+    static bool contains_end_index(const move_info& m,uint8_t end_index) 
+    {
+        for(uint8_t i = 0; i < m.count;++i)
+        {
+            if(((m.encoded_move[i] & 4032) >> 6) == end_index) return true;
+        }
+        return false;
+    }
     std::array<Move, 7> encoded_move;
     uint16_t count;
 };
